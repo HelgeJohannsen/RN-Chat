@@ -1,26 +1,43 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Date;
+
 
 public class Server {
-    public static void main(String[] args){
-        ServerSocket ss = null;
+    int port = 8811;
+    String defaultRoom = "WelcomeRoom";
+    ArrayList<ServerWorker> listClients = new ArrayList<>();
+    ArrayList<ChatRoom> listChatRooms = new ArrayList<>();
+    ChatRoom standardRoom = new ChatRoom(defaultRoom);
+
+    Server(int port){
+        this.port = port;
+    }
+
+    public void run() {
+        listChatRooms.add(standardRoom);
         try {
-            ss = new ServerSocket(1201);
-            Socket s = ss.accept();
-
-            DataInputStream din = new DataInputStream(s.getInputStream());
-            DataOutputStream dout = new DataOutputStream(s.getOutputStream());
-
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-
-            String msgin = "", msgout = "";
-            while(!msgin.equals("end")){
-                msgin = din.readUTF();
-                System.out.println(msgin);
+            ServerSocket serverSocket = new ServerSocket(port);
+            while (true) {
+               Socket clientSocket = serverSocket.accept();
+               ServerWorker worker = new ServerWorker(clientSocket, standardRoom, this);
+               worker.start();
+               listClients.add(worker);
+               standardRoom.addClient(worker);
             }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+     protected ChatRoom getChatRoom(String chatRoomName){
+        for(ChatRoom c: listChatRooms){
+           if(c.toString().equals(chatRoomName)){
+               return c;
+           }
+        }
+        return null;
+}
 }

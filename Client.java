@@ -2,25 +2,30 @@ import java.io.*;
 import java.net.Socket;
 
 public class Client {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Socket s = null;
-        try {
-            s = new Socket("127.0.0.1",1201);
+        String nickName = "";
+
+            s = new Socket("192.168.2.152",8811);
             DataInputStream din = new DataInputStream(s.getInputStream());
             DataOutputStream dout = new DataOutputStream(s.getOutputStream());
 
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-            String msgin = "", msgout = "";
-            while(!msgin.equals("end")){
-                msgout = br.readLine();
-                dout.writeUTF(msgout);
-                System.out.println(msgin);
+            BufferedReader brConsole = new BufferedReader(new InputStreamReader(System.in));
+            BufferedReader brServer = new BufferedReader(new InputStreamReader(din));
+            String textFromServer, msgToServer = "/name Ute";
+
+            // Chat verlassen und vom server abmelden
+        while(true) {
+            while ((textFromServer = brServer.readLine()) != null) {
+
+
+                System.out.println(textFromServer);
+
             }
-
-        } catch (IOException e) {
-            e.printStackTrace();
+            while((msgToServer = brConsole.readLine()) != null){
+                dout.write(msgToServer.getBytes());
+            }
         }
-
 
     }
 }
