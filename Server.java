@@ -6,12 +6,13 @@ import java.util.ArrayList;
 
 public class Server{
     int port;
-    String defaultRoom = "default room";
+    String defaultRoom = "default";
     ArrayList<ChatRoom> listChatRooms = new ArrayList<>();
     ChatRoom standardRoom = new ChatRoom(defaultRoom);
 
     Server(int port){
         this.port = port;
+        System.out.println("Server mit Port: " + port + " erstellt.\n");
     }
 
     public void run() {

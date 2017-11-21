@@ -1,15 +1,16 @@
 import java.io.*;
 import java.net.Socket;
-import java.net.SocketException;
+import java.util.List;
 
 public class ServerWorker extends Thread {
 
     private final Socket clientSocket;
-    private ChatRoom chatRoom;
+    private ChatRoom chatRoom = null;
     private final Server server;
-    private String nickName;
-    OutputStream outputStream;
+    private String nickName = "noname";
+    private OutputStream outputStream;
     boolean running = true;
+    private String commands = "/new /name /switch /listUSerAll /listChats /listUser /leave";
 
     public ServerWorker(Socket clientSocket, ChatRoom chatRoom, Server server) {
         this.server = server;
@@ -46,9 +47,16 @@ public class ServerWorker extends Thread {
         InputStream inputStream = clientSocket.getInputStream();
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         this.outputStream = clientSocket.getOutputStream();
+        sendMsgToClient("Willkommen auf dem Server, Befehle bekommen sie mit /help\n");
         chatRoom.addClient(this);
         String text;
         while ((text = reader.readLine()) != null) {
+//            if(nickName == ""){
+//                sendMsgToClient("Bitte geben sie einen Namen ein mit /name Beispielname\n");
+//            }
+//            if (chatRoom == null){
+//                sendMsgToClient("Bitte wählen sie einen Chatroom mit /switch RoomName\n");
+//            }
             if (text.startsWith("/")) {
                 String[] tokens = text.split("\\s");
                 if (tokens.length > 0) {
@@ -74,6 +82,11 @@ public class ServerWorker extends Thread {
                         case "/name":
                             setNick(tokens[1]);
                             break;
+                        case "/help":
+                            listCommands();
+                            break;
+                         default:
+                             listCommands();
                     }
                 }
             } else {
@@ -83,6 +96,10 @@ public class ServerWorker extends Thread {
             }
         }
         logOff();
+    }
+
+    private void listCommands() {
+        sendMsgToClient(commands + "\n");
     }
 
     private void createChat(String token) {
@@ -107,7 +124,7 @@ public class ServerWorker extends Thread {
         }
     }
 
-    protected void switchChat(String newChat) {
+    private void switchChat(String newChat) {
         try {
                 chatRoom = server.getChatRoom(newChat);
                 chatRoom.addClient(this);
@@ -117,7 +134,7 @@ public class ServerWorker extends Thread {
         }
     }
 
-    protected void listUser() throws IOException {
+    private void listUser() throws IOException {
         sendMsgToClient("Alle User im Chat \"" + chatRoom + "\"\n");
         for (ServerWorker s : chatRoom.clients) {
             sendMsgToClient(s + " ");
