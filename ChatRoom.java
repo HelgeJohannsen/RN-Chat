@@ -9,16 +9,16 @@ public class ChatRoom {
         roomName = name;
     }
 
-    public  void addClient(ServerWorker client) throws IOException {
+    protected  void addClient(ServerWorker client) throws IOException {
         clients.add(client);
         client.sendMsgToClient("Willkommen im Chat: " + roomName + "\n");
         String msg = client.getNickName() + " hat den Raum betreten\n";
         System.out.println(client.getNickName() + " hat den Raum betreten");
         msgToRoom(msg);
     }
-    public  void deleteClient(ServerWorker client) throws IOException {
+    protected  void deleteClient(ServerWorker client) throws IOException {
         clients.remove(client);
-        String msg = client.getNickName() + " hat den Raum betreten\n";
+        String msg = client.getNickName() + "hat den Raum verlassen \n";
         msgToRoom(msg);
     }
     protected void msgToRoom(String msg) throws IOException {

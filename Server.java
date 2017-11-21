@@ -29,7 +29,7 @@ public class Server{
         }
         }
 
-     protected ChatRoom getChatRoom(String chatRoomName){
+     protected ChatRoom getChatRoom(String chatRoomName) throws NullPointerException{
         for(ChatRoom c: listChatRooms){
            if(c.toString().equals(chatRoomName)){
                return c;
