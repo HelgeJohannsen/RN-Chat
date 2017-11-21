@@ -42,7 +42,7 @@ public class ChatClient {
     }
 
     public void login() throws IOException {
-        serverOut.write(("/name " + chatName + "\n").getBytes());
+    //    serverOut.write(("/name " + chatName + "\n").getBytes());
         startMessageReader();
         read();
     }

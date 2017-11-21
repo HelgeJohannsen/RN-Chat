@@ -42,6 +42,7 @@ public class ServerWorker extends Thread {
         InputStream inputStream = clientSocket.getInputStream();
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         this.outputStream = clientSocket.getOutputStream();
+        chatRoom.addClient(this);
         String text;
             while((text = reader.readLine())!= null) {
                 if (text.startsWith("/")) {

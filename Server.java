@@ -20,9 +20,9 @@ public class Server{
             ServerSocket serverSocket = new ServerSocket(port);
             while (true){
                 Socket clientSocket = serverSocket.accept();
+                System.out.println(clientSocket);
             ServerWorker worker = new ServerWorker(clientSocket, standardRoom, this);
             worker.start();
-            standardRoom.addClient(worker);
         }
             }catch (IOException e) {
             e.printStackTrace();
