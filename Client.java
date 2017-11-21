@@ -1,31 +1,57 @@
+// Client.java
+
+// import java.net.Socket;
 import java.io.*;
-import java.net.Socket;
 
 public class Client {
-    public static void main(String[] args) throws IOException {
-        Socket s = null;
-        String nickName = "";
-
-            s = new Socket("192.168.2.152",8811);
-            DataInputStream din = new DataInputStream(s.getInputStream());
-            DataOutputStream dout = new DataOutputStream(s.getOutputStream());
-
-            BufferedReader brConsole = new BufferedReader(new InputStreamReader(System.in));
-            BufferedReader brServer = new BufferedReader(new InputStreamReader(din));
-            String textFromServer, msgToServer = "/name Ute";
-
-            // Chat verlassen und vom server abmelden
-        while(true) {
-            while ((textFromServer = brServer.readLine()) != null) {
-
-
-                System.out.println(textFromServer);
-
-            }
-            while((msgToServer = brConsole.readLine()) != null){
-                dout.write(msgToServer.getBytes());
-            }
+    public static void main(String[] args) {
+        Client client = new Client();
+        try {
+            client.test();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
 
+    void test() throws IOException {
+        String ip = "127.0.0.1"; // localhost
+        int port = 8881;
+        java.net.Socket socket = new java.net.Socket(ip, port); // verbindet sich mit Server
+        BufferedReader bufferedReader =
+                new BufferedReader(
+                        new InputStreamReader(
+                                socket.getInputStream()));
+        String msg;
+        while((msg = bufferedReader.readLine())!= null){
+            System.out.println(msg);
+        }
+        String zuSendendeNachricht = "CLIENT CLIENT!";
+        //  String empfangeneNachricht = leseNachricht(socket);
+        //  System.out.println(empfangeneNachricht);
+        schreibeNachricht(socket, zuSendendeNachricht);
+
+        //   schreibeNachricht(socket, zuSendendeNachricht);
+    }
+
+    void schreibeNachricht(java.net.Socket socket, String nachricht) throws IOException {
+        PrintWriter printWriter =
+                new PrintWriter(
+                        new OutputStreamWriter(
+                                socket.getOutputStream()));
+            printWriter.print(nachricht);
+            printWriter.flush();
+
+    }
+
+
+    String leseNachricht(java.net.Socket socket) throws IOException {
+        BufferedReader bufferedReader =
+                new BufferedReader(
+                        new InputStreamReader(
+                                socket.getInputStream()));
+        char[] buffer = new char[200];
+        int anzahlZeichen = bufferedReader.read(buffer, 0, 200); // blockiert bis Nachricht empfangen
+        String nachricht = new String(buffer, 0, anzahlZeichen);
+        return nachricht;
     }
 }

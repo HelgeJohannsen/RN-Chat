@@ -42,7 +42,7 @@ public class ChatClient {
     }
 
     public void login() throws IOException {
-        serverOut.write(("name " + chatName + "\n").getBytes());
+        serverOut.write(("/name " + chatName + "\n").getBytes());
         startMessageReader();
         read();
     }
@@ -80,20 +80,23 @@ public class ChatClient {
     }
     private void readMessageLoop() {
         try {
-            String line;
-            while ((line = bufferedIn.readLine()) != null) {
-                String[] tokens = line.split(" ", 3);
-                String cmd = tokens[0];
-                String user = tokens[1];
-                String text = tokens[2];
-                if (tokens.length > 2) {
-                    if ("system".equalsIgnoreCase(cmd)) {
-                        System.out.println(text);
-                    } else if ("offline".equalsIgnoreCase(cmd)) {
+            String text;
+            while ((text = bufferedIn.readLine()) != null) {
+                if (text.startsWith("/")) {
+                    String[] tokens = text.split("\\s");
+                    if (tokens.length > 0) {
+                        switch (tokens[0]) {
+                            case "/leave":
 
-                    } else if ("msg".equalsIgnoreCase(cmd)) {
-                        if(chatName!= tokens[1]) System.out.println(user + ": " + text);
+                                break;
+                            case "/new":
+
+                                break;
+
+                        }
                     }
+                }else {
+                    System.out.println(text);
                 }
             }
         } catch (Exception ex) {

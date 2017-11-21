@@ -8,12 +8,12 @@ public class ServerWorker extends Thread {
     private final Server server;
     private String nickName = "notSet";
     OutputStream outputStream;
+    boolean running = true;
 
-    public ServerWorker(Socket clientSocket, ChatRoom chatRoom, Server server) throws IOException {
+    public ServerWorker(Socket clientSocket, ChatRoom chatRoom, Server server){
         this.server = server;
         this.clientSocket = clientSocket;
         this.chatRoom = chatRoom;
-
     }
 
     @Override
@@ -30,56 +30,63 @@ public class ServerWorker extends Thread {
     }
 
 
-    protected void sendMsgToClient(String msg) throws IOException {
-        outputStream.write(msg.getBytes());
+    protected void sendMsgToClient(String msg) {
+        try {
+            outputStream.write(msg.getBytes());
+        } catch (IOException e) {
+            System.out.println("AAAA" + e.getMessage());
+        }
     }
 
-    private void handleClientSocket() throws IOException {
+    private void handleClientSocket() throws IOException{
         InputStream inputStream = clientSocket.getInputStream();
-        this.outputStream = clientSocket.getOutputStream();
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        this.outputStream = clientSocket.getOutputStream();
         String text;
             while((text = reader.readLine())!= null) {
-                String[] tokens = text.split(" ");
-                if (tokens.length > 0) {
-                    switch (tokens[0]) {
-                        case "leave":
-                            logOff();
-                            break;
-                        case "new":
-                            server.listChatRooms.add(new ChatRoom(tokens[1]));
-                            break;
-                        case "list":
-                            for (ChatRoom c : server.listChatRooms) {
-                                sendMsgToClient(c.toString());
-                            }
-                            break;
-                        case "switch":
-                            switchChat(tokens[1]);
-                            break;
-                        case "listUser":
-                            listUser();
-                            break;
-                        case "name":
-                            setNick(tokens[1]);
-                            break;
+                if (text.startsWith("/")) {
+                    String[] tokens = text.split("\\s");
+                    if (tokens.length > 0) {
+                        switch (tokens[0]) {
+                            case "/leave":
+                                logOff();
+                                break;
+                            case "/new":
+                                server.listChatRooms.add(new ChatRoom(tokens[1]));
+                                break;
+                            case "/list":
+                                for (ChatRoom c : server.listChatRooms) {
+                                    sendMsgToClient(c.toString());
+                                }
+                                break;
+                            case "/switch":
+                                switchChat(tokens[1]);
+                                break;
+                            case "/listUser":
+                                listUser();
+                                break;
+                            case "/name":
+                                setNick(tokens[1]);
+                                break;
+                        }
                     }
+                }else {
+                    System.out.println(chatRoom + " " + nickName + ": " + text);
+                    String msg = "#" + nickName + " " + text + "\n";
+                    chatRoom.msgToRoom(msg);
                 }
-                String msg = "msg " + nickName + text + "\n";
-                chatRoom.msgToRoom(msg);
             }
-        System.out.println("Socket closed");
+
         clientSocket.close();
     }
 
-    private void logOff() {
-        try {
-            outputStream.close();
-            clientSocket.close();
-            chatRoom.deleteClient(this);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private void logOff() throws IOException {
+//            outputStream.close();
+//            clientSocket.close();
+//            chatRoom.deleteClient(this);
+        System.out.println("Socket closed Log Off");
+        running = false;
+        clientSocket.close();
     }
 
     protected void switchChat(String newChat) throws IOException {
@@ -89,22 +96,19 @@ public class ServerWorker extends Thread {
             chatRoom.addClient(this);
         }
     }
-    protected void listUser(){
-        try {
-            sendMsgToClient("Alle User im Chat " + chatRoom + " ");
-            for(ServerWorker s : chatRoom.clients){
-                sendMsgToClient(s + " ");
-            }
-            sendMsgToClient("\n");
-        } catch (IOException e) {
-            e.printStackTrace();
+    protected void listUser() throws IOException {
+        sendMsgToClient("Alle User im Chat " + chatRoom + " ");
+        for(ServerWorker s : chatRoom.clients){
+            sendMsgToClient(s + " ");
         }
+        sendMsgToClient("\n");
     }
-    protected void setNick(String newName){
+    protected void setNick(String newName) {
         try {
             chatRoom.msgToRoom(nickName + " hat sich umbenannt in: " + newName + "\n");
+            nickName = newName;
         } catch (IOException e) {
-            e.printStackTrace();
+            sendMsgToClient("Name schon vorhanden");
         }
         nickName = newName;
     }

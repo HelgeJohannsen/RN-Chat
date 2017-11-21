@@ -4,7 +4,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 
 
-public class Server {
+public class Server{
     int port;
     String defaultRoom = "default room";
     ArrayList<ChatRoom> listChatRooms = new ArrayList<>();
@@ -14,23 +14,17 @@ public class Server {
         this.port = port;
     }
 
-    public static void main(String[] args) {
-        Server chat = new Server(8811);
-        chat.run();
-    }
-
     public void run() {
         listChatRooms.add(standardRoom);
         try {
             ServerSocket serverSocket = new ServerSocket(port);
-            while (true) {
-               Socket clientSocket = serverSocket.accept();
-               ServerWorker worker = new ServerWorker(clientSocket, standardRoom, this);
-               worker.start();
-               standardRoom.addClient(worker);
-            }
-
-        } catch (IOException e) {
+            while (true){
+                Socket clientSocket = serverSocket.accept();
+            ServerWorker worker = new ServerWorker(clientSocket, standardRoom, this);
+            worker.start();
+            standardRoom.addClient(worker);
+        }
+            }catch (IOException e) {
             e.printStackTrace();
         }
         }
