@@ -15,7 +15,7 @@ public class Server{
         System.out.println("Server mit Port: " + port + " erstellt.\n");
     }
 
-    public void run() {
+    void run() {
         listChatRooms.add(standardRoom);
         try {
             ServerSocket serverSocket = new ServerSocket(port);
@@ -30,7 +30,7 @@ public class Server{
         }
         }
 
-     protected ChatRoom getChatRoom(String chatRoomName) throws NullPointerException{
+     ChatRoom getChatRoom(String chatRoomName) throws NullPointerException{
         for(ChatRoom c: listChatRooms){
            if(c.toString().equals(chatRoomName)){
                return c;
@@ -38,4 +38,7 @@ public class Server{
         }
         return null;
 }
+        void serverOut(String msg){
+            System.out.println(msg + "\n");
+        }
 }
