@@ -1,93 +1,85 @@
 import java.io.*;
 import java.net.Socket;
 
-public class ServerWorker extends Thread implements Runnable{
+public class ServerWorker extends Thread {
 
     private final Socket clientSocket;
     private ChatRoom chatRoom;
     private final Server server;
     private String nickName = "notSet";
+    OutputStream outputStream;
 
-
-    public ServerWorker(Socket clientSocket, ChatRoom chatRoom, Server server){
+    public ServerWorker(Socket clientSocket, ChatRoom chatRoom, Server server) throws IOException {
         this.server = server;
         this.clientSocket = clientSocket;
         this.chatRoom = chatRoom;
+
     }
+
     @Override
     public void run(){
-            try {
-                handleClientSocket();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-    private void createNickName() throws IOException {
-        OutputStream outputStream = clientSocket.getOutputStream();
-        InputStream inputStream = clientSocket.getInputStream();
-        BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
-        outputStream.write(("Bitte geben sie ihren Nicknamen ein:").getBytes());
         try {
-            nickName = br.readLine();
+            handleClientSocket();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
     protected String getNickName(){
         return nickName;
     }
 
 
     protected void sendMsgToClient(String msg) throws IOException {
-        OutputStream outputStream = clientSocket.getOutputStream();
         outputStream.write(msg.getBytes());
     }
 
-    private void handleClientSocket() throws InterruptedException, IOException {
+    private void handleClientSocket() throws IOException {
         InputStream inputStream = clientSocket.getInputStream();
-        BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+        this.outputStream = clientSocket.getOutputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         String text;
-        // Chat verlassen und vom server abmelden
-        while((text = br.readLine())!= null){
-                System.out.println(text);
-                if(text.equals("\n")){
-                    break;
-                }
-                if(text.charAt(0) == '/'){
-                    String[] cmd = text.split("\\s");
-                    switch(cmd[0]){
-                        case "/leave":
-                            //TODO schliesst mit Fehlermeldung
-                            chatRoom.deleteClient(this);
-                            clientSocket.close();
+            while((text = reader.readLine())!= null) {
+                String[] tokens = text.split(" ");
+                if (tokens.length > 0) {
+                    switch (tokens[0]) {
+                        case "leave":
+                            logOff();
                             break;
-                        case "/new":
-                            server.listChatRooms.add(new ChatRoom(cmd[1]));
+                        case "new":
+                            server.listChatRooms.add(new ChatRoom(tokens[1]));
                             break;
-                        case "/list":
-                            for(ChatRoom c : server.listChatRooms){sendMsgToClient(c.toString());}
+                        case "list":
+                            for (ChatRoom c : server.listChatRooms) {
+                                sendMsgToClient(c.toString());
+                            }
                             break;
-                        case "/switch":
-                            switchChat(cmd[1]);
+                        case "switch":
+                            switchChat(tokens[1]);
                             break;
-                        case "/listUser":
+                        case "listUser":
                             listUser();
                             break;
-                        case "/name":
-                            setNick(cmd[1]);
+                        case "name":
+                            setNick(tokens[1]);
                             break;
-
                     }
-                }else{
-                    String msg = nickName + ": " + text + "\n";
-                    chatRoom.msgToRoom(msg);
-                    System.out.println(msg);}
-        }
-        System.out.println("AAAAAAAAA");
+                }
+                String msg = "msg " + nickName + text + "\n";
+                chatRoom.msgToRoom(msg);
+            }
+        System.out.println("Socket closed");
         clientSocket.close();
+    }
+
+    private void logOff() {
+        try {
+            outputStream.close();
+            clientSocket.close();
+            chatRoom.deleteClient(this);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     protected void switchChat(String newChat) throws IOException {
@@ -109,7 +101,11 @@ public class ServerWorker extends Thread implements Runnable{
         }
     }
     protected void setNick(String newName){
-        System.out.print(nickName + " hat sich umbenannt in: " + newName);
+        try {
+            chatRoom.msgToRoom(nickName + " hat sich umbenannt in: " + newName + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         nickName = newName;
     }
      public String toString(){

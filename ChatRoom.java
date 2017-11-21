@@ -11,8 +11,9 @@ public class ChatRoom {
 
     public  void addClient(ServerWorker client) throws IOException {
         clients.add(client);
+        client.sendMsgToClient("system welcome Willkommen im Chat: " + roomName + "\n");
         String msg = client.getNickName() + " hat den Raum betreten\n";
-        System.out.println(client.getNickName() + " hat den Raum betreten\n");
+        System.out.println(client.getNickName() + " hat den Raum betreten");
         msgToRoom(msg);
     }
     public  void deleteClient(ServerWorker client) throws IOException {
