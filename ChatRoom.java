@@ -2,26 +2,28 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 public class ChatRoom {
-    ArrayList<ServerWorker> clients = new ArrayList<>();
+    final ArrayList<ServerWorker> clients = new ArrayList<>();
     private final String roomName;
+    private final Server server;
 
-    ChatRoom(String name){
+    ChatRoom(String name, Server server){
         roomName = name;
+        this.server = server;
     }
 
     void addClient(ServerWorker client) throws IOException {
         clients.add(client);
-        client.sendMsgToClient("Willkommen im Chat: " + roomName + "\n");
-        String msg = client.getNickName() + " hat den Raum betreten\n";
-        System.out.println(client.getNickName() + " hat den Raum betreten");
+        client.sendMsgToClient("Willkommen im Chat: " + roomName);
+        String msg = client.getNickName() + " hat den Raum betreten";
+        server.serverOut(client.getNickName() + " hat den Raum betreten");
         msgToRoom(msg);
     }
     void deleteClient(ServerWorker client) throws IOException {
         clients.remove(client);
-        String msg = client.getNickName() + " hat den Raum verlassen \n";
+        String msg = client.getNickName() + " hat den Raum verlassen";
         msgToRoom(msg);
     }
-    void msgToRoom(String msg) throws IOException {
+    void msgToRoom(String msg) {
         for (ServerWorker c:clients){
             c.sendMsgToClient(msg);
         }

@@ -4,15 +4,15 @@ import java.net.Socket;
 import java.util.ArrayList;
 
 
-public class Server{
-    int port;
-    String defaultRoom = "default";
-    ArrayList<ChatRoom> listChatRooms = new ArrayList<>();
-    ChatRoom standardRoom = new ChatRoom(defaultRoom);
+class Server{
+    private final int port;
+    private final String defaultRoom = "default";
+    final ArrayList<ChatRoom> listChatRooms = new ArrayList<>();
+    private final ChatRoom standardRoom = new ChatRoom(defaultRoom, this);
 
     Server(int port){
         this.port = port;
-        System.out.println("Server mit Port: " + port + " erstellt.\n");
+        serverOut("Server auf Port: " + port + " erstellt.");
     }
 
     void run() {
@@ -39,6 +39,6 @@ public class Server{
         return null;
 }
         void serverOut(String msg){
-            System.out.println(msg + "\n");
+            System.out.println(msg);
         }
 }

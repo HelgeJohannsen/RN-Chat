@@ -1,36 +1,26 @@
 import java.io.*;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 public class ChatClient {
     final String serverName;
     final int port;
-    Socket socket;
+    private Socket socket;
     private OutputStream serverOut;
-    private InputStream serverIn;
     private BufferedReader bufferedIn;
-    String chatName = "Peter2000";
-    BufferedReader brc = new BufferedReader(new InputStreamReader(System.in));
+    private final BufferedReader brc = new BufferedReader(new InputStreamReader(System.in));
 
-    public ChatClient(String serverName, int port) {
+
+    private ChatClient(String serverName, int port) {
         this.serverName = serverName;
         this.port = port;
     }
 
     public static void main(String[] args) throws IOException {
         ChatClient client = new ChatClient("localhost", 8811);
-
-        if(!client.connect()){
-            System.err.println("Connect failed.\n");
-        } else {
-            System.out.printf("Connect sucessful\n");
-                client.login();
-
-        }
-
+        client.connect();
     }
 
-    public void read(){
+    private void readConsole(){
         String inConsole;
         try {
             while((inConsole = brc.readLine()) != null){
@@ -41,12 +31,6 @@ public class ChatClient {
         }
     }
 
-    public void login() throws IOException {
-        serverOut.write(("/name " + chatName + "\n").getBytes());
-        startMessageReader();
-        read();
-    }
-
     private void writeToServer(String msg){
         try {
             serverOut.write((msg+"\n").getBytes());
@@ -55,20 +39,36 @@ public class ChatClient {
         }
     }
 
-    private boolean connect() {
+    private void connect() {
         try{
             this.socket = new Socket(serverName, port);
             this.serverOut = socket.getOutputStream();
-            this.serverIn = socket.getInputStream();
+            InputStream serverIn = socket.getInputStream();
             this.bufferedIn = new BufferedReader(new InputStreamReader(serverIn));
-            return true;
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
+            String chatName = "Peter2000";
+            serverOut.write(("/name " + chatName + "\n").getBytes());
+            startMessageReader();
+            readConsole();
+            writeConsole("Erfolgreich verbunden");
         } catch (IOException e) {
-            e.printStackTrace();
+            writeConsole("Verbindung zum Server fehlgeschlagen");
         }
-        return false;
     }
+
+    private void writeConsole(String s) {
+        String dateiname = "log";
+        try {
+            FileOutputStream outputToLog = new FileOutputStream(dateiname);
+            outputToLog.write(s.getBytes());
+        } catch (FileNotFoundException e) {
+            System.out.println("Log Datei nicht gefunden");
+        } catch (IOException e) {
+            System.out.println("Log Datei kann nicht geschrieben werden");
+        }
+
+        System.out.println(s);
+    }
+
     private void startMessageReader() {
         Thread t = new Thread() {
             @Override
@@ -82,30 +82,19 @@ public class ChatClient {
         try {
             String text;
             while ((text = bufferedIn.readLine()) != null) {
-                if (text.startsWith("/")) {
-                    String[] tokens = text.split("\\s");
-                    if (tokens.length > 0) {
-                        switch (tokens[0]) {
-                            case "/leave":
-
-                                break;
-                            case "/new":
-
-                                break;
-
-                        }
-                    }
-                }else {
-                    System.out.println(text);
+                writeConsole(text);
                 }
-            }
         } catch (Exception ex) {
-            ex.printStackTrace();
-            try {
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            writeConsole("Verbindung zum Server verloren");
+            logout();
+        }
+    }
+
+    private void logout() {
+        try {
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
