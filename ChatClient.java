@@ -57,6 +57,7 @@ public class ChatClient {
 
     private void writeConsole(String s) {
         String dateiname = "log";
+       // TODO
         try {
             FileOutputStream outputToLog = new FileOutputStream(dateiname);
             outputToLog.write(s.getBytes());
