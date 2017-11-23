@@ -1,10 +1,12 @@
 import java.io.*;
 import java.net.Socket;
+import java.util.regex.Matcher;
 
 public class ServerWorker extends Thread {
 
     private final Socket clientSocket;
     private final Server server;
+    private final int maxMsgLength = 1000;
     boolean running = true;
     private ChatRoom chatRoom = null;
     private String nickName = "noname";
@@ -41,17 +43,23 @@ public class ServerWorker extends Thread {
 
     private void handleClientSocket() throws IOException {
         InputStream inputStream = clientSocket.getInputStream();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        Reader reader = new InputStreamReader(inputStream);
         this.outputStream = clientSocket.getOutputStream();
         sendMsgToClient("Willkommen auf dem Server, Befehle bekommen sie mit /help");
         chatRoom.addClient(this);
         String text;
-        while ((text = reader.readLine()) != null) {
-//            if(nickName == ""){
+        int msgLength = 0;
+        char[] cbuf = new char[maxMsgLength];
+        while ((msgLength = reader.read(cbuf, 0, maxMsgLength)) != -1) {
+            text = String.copyValueOf(cbuf, 0, msgLength);
+            cbuf = new char[maxMsgLength];
+            //if(nickName == ""){
 //                sendMsgToClient("Bitte geben sie einen Namen ein mit /name Beispielname\n");
 //            }
 //            if (chatRoom == null){
 //                sendMsgToClient("Bitte wählen sie einen Chatroom mit /switch RoomName\n");
+            text = Matcher.quoteReplacement(text).replaceFirst("\n", "");
+            text = Matcher.quoteReplacement(text).replaceFirst("\r", "");
 //            }
             if (text.startsWith("/")) {
                 String[] tokens = text.split("\\s");
@@ -85,11 +93,12 @@ public class ServerWorker extends Thread {
                             listCommands();
                     }
                 }
-            } else {
+            } else if(!text.isEmpty()) {
                 server.serverOut(chatRoom + " " + nickName + ": " + text);
                 String msg = nickName + ": " + text;
                 chatRoom.msgToRoom(msg);
             }
+
         }
         logOff();
     }
