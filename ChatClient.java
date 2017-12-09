@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.Socket;
+import java.util.Arrays;
 
 public class ChatClient {
     final String serverName;
@@ -7,6 +8,8 @@ public class ChatClient {
     private Socket socket;
     private OutputStream serverOut;
     private BufferedReader bufferedIn;
+    private boolean connected = false;
+    private String chatName = "defaultName";
     private final BufferedReader brc = new BufferedReader(new InputStreamReader(System.in));
 
 
@@ -16,55 +19,72 @@ public class ChatClient {
     }
 
     public static void main(String[] args) throws IOException {
-        ChatClient client = new ChatClient("localhost", 8811);
-        client.connect();
+        ChatClient client = new ChatClient("localhost", Integer.parseInt(args[0]));
+        client.start();
+    }
+
+    private void start() {
+        readConsole();
     }
 
     private void readConsole(){
         String inConsole;
+        connected = connect();
         try {
             while((inConsole = brc.readLine()) != null){
-                writeToServer(inConsole);
+                if(connected){
+                    sendToServer(inConsole);
+                }else{
+                    switch (inConsole) {
+                        case "/connect":
+                            connected = connect();
+                            break;
+                        default:
+                            chatOutput("Error 400 Keine Verbindung zum Server");
+                    }
+                }
+
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void writeToServer(String msg){
+    private void sendToServer(String inConsole) {
         try {
-            serverOut.write((msg+"\n").getBytes());
+            serverOut.write((inConsole).getBytes());
         } catch (IOException e) {
+            chatOutput("Error 402 nachricht kann nicht gesendet werden");
             e.printStackTrace();
         }
     }
 
-    private void connect() {
+
+    private boolean connect() {
         try{
             this.socket = new Socket(serverName, port);
             this.serverOut = socket.getOutputStream();
             InputStream serverIn = socket.getInputStream();
             this.bufferedIn = new BufferedReader(new InputStreamReader(serverIn));
-            String chatName = "Peter2000";
             serverOut.write(("/name " + chatName + "\n").getBytes());
             startMessageReader();
-            readConsole();
-            writeConsole("Erfolgreich verbunden");
+            chatOutput("Erfolgreich verbunden");
+            return true;
         } catch (IOException e) {
-            writeConsole("Verbindung zum Server fehlgeschlagen");
+            chatOutput("Error 407 Verbindung zum Server fehlgeschlagen");
+            return false;
         }
     }
 
-    private void writeConsole(String s) {
+    private void chatOutput(String s) {
         String dateiname = "log";
-       // TODO
         try {
-            FileOutputStream outputToLog = new FileOutputStream(dateiname);
-            outputToLog.write(s.getBytes());
+            FileWriter outputToLog = new FileWriter(dateiname,true);
+            outputToLog.write(s);
         } catch (FileNotFoundException e) {
-            System.out.println("Log Datei nicht gefunden");
+            System.out.println("Error 430 Datei nicht gefunden");
         } catch (IOException e) {
-            System.out.println("Log Datei kann nicht geschrieben werden");
+            System.out.println("Error 431 Log Datei kann nicht geschrieben werden");
         }
 
         System.out.println(s);
@@ -83,16 +103,33 @@ public class ChatClient {
         try {
             String text;
             while ((text = bufferedIn.readLine()) != null) {
-                writeConsole(text);
+                if (text.startsWith("/")) {
+                    String[] tokens = text.split("\\s");
+                    if (tokens.length > 0) {
+                        switch (tokens[0]) {
+                            case "/201":
+                                logout();
+                            default:
+                                chatOutput(text);
+                        }
+                    }
+                } else {
+                    chatOutput(text);
                 }
+            }
         } catch (Exception ex) {
-            writeConsole("Verbindung zum Server verloren");
-            logout();
+            if(connected)
+            {
+                chatOutput("Error 405 Verbindung zum Server verloren");
+                logout();
+            }
         }
     }
 
     private void logout() {
         try {
+            connected = false;
+            chatOutput("Verbindung beendet");
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();

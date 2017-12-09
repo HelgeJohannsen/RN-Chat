@@ -1,19 +1,29 @@
 import java.io.*;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.regex.Matcher;
 
 public class ServerWorker extends Thread {
 
     private final Socket clientSocket;
     private final Server server;
-    boolean running = true;
+    private final int maxMsgLength = 1000;
     private ChatRoom chatRoom = null;
-    private String nickName = "noname";
+    private String nickName;
     private OutputStream outputStream;
 
-    ServerWorker(Socket clientSocket, ChatRoom chatRoom, Server server) {
+    private HashMap<Integer,String> responseCodes;
+
+    ServerWorker(Socket clientSocket,String nickName, ChatRoom chatRoom, Server server) {
         this.server = server;
         this.clientSocket = clientSocket;
         this.chatRoom = chatRoom;
+        this.nickName = nickName;
+        responseCodes = new HashMap<Integer,String>();
+        responseCodes.put(200, "/200 ok");
+        responseCodes.put(201, "/201 GoodyBye");
+        responseCodes.put(300, "/300 Missing Argument");
+        responseCodes.put(301, "/301 Name already taken");
     }
 
     @Override
@@ -21,7 +31,7 @@ public class ServerWorker extends Thread {
         try {
             handleClientSocket();
         } catch (IOException e) {
-            server.serverOut("Verbindung zu " + clientSocket + " verloren");
+            server.serverOut(e.getMessage());
             logOff();
         }
     }
@@ -35,23 +45,31 @@ public class ServerWorker extends Thread {
         try {
             outputStream.write((msg + "\n").getBytes());
         } catch (IOException e) {
-            server.serverOut("Nachricht kann nichtgesendet werden" + e.getMessage());
+            //server.serverOut("Nachricht kann nichtgesendet werden" + e.getMessage());
         }
     }
 
     private void handleClientSocket() throws IOException {
         InputStream inputStream = clientSocket.getInputStream();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        Reader reader = new InputStreamReader(inputStream);
         this.outputStream = clientSocket.getOutputStream();
         sendMsgToClient("Willkommen auf dem Server, Befehle bekommen sie mit /help");
         chatRoom.addClient(this);
         String text;
-        while ((text = reader.readLine()) != null) {
-//            if(nickName == ""){
+        int msgLength = 0;
+        char[] cbuf = new char[maxMsgLength];
+        boolean hasLeft = false;
+
+        while (!hasLeft && (msgLength = reader.read(cbuf, 0, maxMsgLength)) != -1) {
+            text = String.copyValueOf(cbuf, 0, msgLength);
+            cbuf = new char[maxMsgLength];
+            //if(nickName == ""){
 //                sendMsgToClient("Bitte geben sie einen Namen ein mit /name Beispielname\n");
 //            }
 //            if (chatRoom == null){
 //                sendMsgToClient("Bitte wählen sie einen Chatroom mit /switch RoomName\n");
+            text = Matcher.quoteReplacement(text).replaceFirst("\n", "");
+            text = Matcher.quoteReplacement(text).replaceFirst("\r", "");
 //            }
             if (text.startsWith("/")) {
                 String[] tokens = text.split("\\s");
@@ -59,15 +77,22 @@ public class ServerWorker extends Thread {
                     switch (tokens[0]) {
                         case "/leave":
                             logOff();
+                            hasLeft = true;
                             break;
                         case "/new":
-                            createChat(tokens[1]);
+                            if(tokens.length > 1)
+                                createChat(tokens[1]);
+                            else
+                                sendMsgToClient(responseCodes.get(300));
                             break;
                         case "/listChats":
                             listChats();
                             break;
                         case "/switch":
-                            switchChat(tokens[1]);
+                            if(tokens.length > 1)
+                                switchChat(tokens[1]);
+                            else
+                                sendMsgToClient(responseCodes.get(300));
                             break;
                         case "/listUser":
                             listUser();
@@ -76,7 +101,10 @@ public class ServerWorker extends Thread {
                             listUserAll();
                             break;
                         case "/name":
-                            setNick(tokens[1]);
+                            if(tokens.length > 1)
+                                setNick(tokens[1]);
+                            else
+                                sendMsgToClient(responseCodes.get(300));
                             break;
                         case "/help":
                             listCommands();
@@ -85,36 +113,40 @@ public class ServerWorker extends Thread {
                             listCommands();
                     }
                 }
-            } else {
+            } else if(!text.isEmpty()) {
                 server.serverOut(chatRoom + " " + nickName + ": " + text);
                 String msg = nickName + ": " + text;
                 chatRoom.msgToRoom(msg);
             }
+
         }
-        logOff();
+        //Verbindung nicht ordentlich beendet
+        if(!hasLeft)
+            throw new IOException("Verbindung zu " + clientSocket + " verloren!");
     }
 
     private void listCommands() {
-        String commands = "/new /name /switch /list /listChats /listUser /leave";
+        String commands = "Befehle: /new /name /switch /list /listChats /listUser /leave /help";
         sendMsgToClient(commands + "\n");
     }
 
     private void createChat(String token) {
-        try {
-            server.listChatRooms.add(new ChatRoom(token, server));
+        if(server.addChatRoom(token))
+        {
             server.serverOut("Chatroom \"" + token + "\" wurde erstellt");
             sendMsgToClient("Chatroom \"" + token + "\" wurde erstellt");
-        } catch (Exception e) {
-            System.out.println("Chatroom \"" + token + "\" konnte nicht erstellt werden");
-            server.serverOut("Chatroom \"" + token + "\" bereits vorhanden");
+        }
+        else
+        {
+            sendMsgToClient(responseCodes.get(301));
         }
     }
 
     private void logOff() {
         try {
+            sendMsgToClient(responseCodes.get(201));
             outputStream.close();
             chatRoom.deleteClient(this);
-            running = false;
             clientSocket.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -135,7 +167,7 @@ public class ServerWorker extends Thread {
 
     private void listUser() {
         StringBuilder msg = new StringBuilder("Alle User im Chat \"" + chatRoom + "\"\n");
-        for (ServerWorker s : chatRoom.clients) {
+        for (ServerWorker s : chatRoom.getClientList()) {
             msg.append(s).append(" ");
         }
         sendMsgToClient(msg.toString());
@@ -143,9 +175,9 @@ public class ServerWorker extends Thread {
 
     private void listUserAll() {
         String msg = "Server: \n";
-        for (ChatRoom chat : server.listChatRooms) {
+        for (ChatRoom chat : server.getChatRoomList()) {
             msg = msg + "User im Chat: \"" + chat + "\":";
-            for (ServerWorker s : chat.clients) {
+            for (ServerWorker s : chat.getClientList()) {
                 msg = msg + " " + s;
             }
             msg = msg + "\n";
@@ -155,15 +187,23 @@ public class ServerWorker extends Thread {
 
     private void listChats() {
         String msg = "Alle Chats des Servers\n";
-        for (ChatRoom c : server.listChatRooms) {
+        for (ChatRoom c : server.getChatRoomList()) {
             msg = msg + c.toString() + " ";
         }
         sendMsgToClient(msg);
     }
 
     private void setNick(String newName) {
-        String text = nickName + " hat sich umbenannt in: " + newName;
-        nickName = newName;
+        String text = "";
+        if(server.checkNickname(newName))
+        {
+            text = nickName + " hat sich umbenannt in: " + newName;
+            nickName = newName;
+        }
+        else
+        {
+            text = responseCodes.get(301);
+        }
         chatRoom.msgToRoom(text);
         server.serverOut(text);
     }
